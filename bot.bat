@@ -1,0 +1,1 @@
+python %~dp0bot_RaidAttendance.py
