@@ -21,7 +21,6 @@ class Bot(GroupMixin, discord.Client):
 		self.pm_help = pm_help
 		self.command_not_found = options.pop('command_not_found', 'No command called "{}" found.')
 		self.command_has_no_subcommands = options.pop('command_has_no_subcommands', 'Command {0.name} has no subcommands.')
-		self.PICKLE_FILE = ''
 
 		self._skip_check = discord.User.__ne__ if options.pop('self_bot', False) else discord.User.__eq__
 
@@ -145,9 +144,9 @@ class Bot(GroupMixin, discord.Client):
 
 		}
 
-	async def db_save(self, file=self.PICKLE_FILE):
+	async def db_save(self, file):
 		try:
-			with open(self.file, 'wb') as file:
+			with open(file, 'wb') as file:
 				pickle.dump(self.data, file, pickle.HIGHEST_PROTOCOL)
 			return(True)
 		except:

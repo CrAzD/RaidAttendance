@@ -1,1 +1,1 @@
-python %~dp0bot_RaidAttendance.py
+python %~dp0Core.py
