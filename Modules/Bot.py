@@ -1,8 +1,12 @@
-import asyncio
 import discord
+
+import asyncio
+import configparser
+import inspect
+import math
+import pickle
 import os
 import sys
-import inspect
 
 from discord.ext.commands.core import GroupMixin, Command, command
 from discord.ext.commands.view import StringView
@@ -10,32 +14,36 @@ from discord.ext.commands.context import Context
 from discord.ext.commands.errors import CommandNotFound, CommandError
 from discord.ext.commands.formatter import HelpFormatter
 
-from openpyxl import WorkBook
+#from openpyxl import WorkBook
 
 
-class Bot(GroupMixin, discord.Client):
-	def __init__(self, command_prefix='ra.', formatter=None, description=None, pm_help=True, **options):
+class RaidAttendanceBot(GroupMixin, discord.Client):
+	def __init__(self, directory='', path={}, command_prefix='ra.', formatter=None, description=None, pm_help=True, **options):
 		super().__init__(**options)
-		self.data = data
+		self.directory = directory
+		self.path = path
+
+		###DEFAULT BOT STUFF###
 		self.command_prefix = command_prefix
 		self.pm_help = pm_help
 		self.command_not_found = options.pop('command_not_found', 'No command called "{}" found.')
 		self.command_has_no_subcommands = options.pop('command_has_no_subcommands', 'Command {0.name} has no subcommands.')
-
 		self._skip_check = discord.User.__ne__ if options.pop('self_bot', False) else discord.User.__eq__
-
 		self.help_attrs = options.pop('help_attrs', {})
 		self.help_attrs['pass_context'] = True
-
 		if not 'name' in self.help_attrs:
 			self.help_attrs['name'] = 'help'
-
 		if not formatter is None:
 			if not isinstance(formatter, HelpFormatter):
 				raise discord.ClientException('Formatter')
+		#self.command(**self.help_attrs)('help')
+		###DEFAULT BOT STUFF END###
 
-		self.command(**self.help_attrs)(_default_help_command)
-		self.refresh_channels()
+
+		self.CONFIG_TOKEN = Bot.config_initialize(file=Bot.PATH_TOKEN)
+		self.TOKEN = self.CONFIG_TOKEN['TOKEN']['TOKEN']
+
+		#self.Commands = self.config_initialize()
 
 		self.Commands = {
 			'_list':[],
@@ -44,7 +52,8 @@ class Bot(GroupMixin, discord.Client):
 				'function':self.help_manual,
 				'permission_level':-1,
 				'valid_variables':{},
-				'help_message'
+				'help_message':f'''
+				'''
 			},
 			'recording_start':{
 				'alias':['rec_start', 'r_s', 'recstart', 'rs'],
@@ -53,7 +62,7 @@ class Bot(GroupMixin, discord.Client):
 				'valid_variables':{},
 				'help_message':f'''
 				'''
-			}
+			},
 			'recording_end':{
 				'alias':['rec_end', 'r_e', 'recend', 're'],
 				'function':self.recording_end,
@@ -61,7 +70,7 @@ class Bot(GroupMixin, discord.Client):
 				'valid_variables':{},
 				'help_message':f'''
 				'''
-			}
+			},
 			'recording_list':{
 				'alias':['rec_list', 'r_l', 'reclist', 'rl'],
 				'function':self.recording_list,
@@ -69,7 +78,7 @@ class Bot(GroupMixin, discord.Client):
 				'valid_variables':{},
 				'help_message':f'''
 				'''
-			}
+			},
 			'recording_get':{
 				'alias':['rec_get', 'r_g', 'recget', 'rg'],
 				'function':self.recording_get,
@@ -77,7 +86,7 @@ class Bot(GroupMixin, discord.Client):
 				'valid_variables':{},
 				'help_message':f'''
 				'''
-			}
+			},
 			'user_add':{
 				'alias':['u_a', 'ua', 'u+', 'user+'],
 				'function':self.user_add,
@@ -85,7 +94,7 @@ class Bot(GroupMixin, discord.Client):
 				'valid_variables':{},
 				'help_message':f'''
 				'''
-			}
+			},
 			'user_remove':{
 				'alias':['u_r', 'ur', 'u-', 'user-'],
 				'function':self.user_remove,
@@ -93,7 +102,7 @@ class Bot(GroupMixin, discord.Client):
 				'valid_variables':{},
 				'help_message':f'''
 				'''
-			}
+			},
 			'user_list':{
 				'alias':['u_l', 'ul', 'u|', 'user|'],
 				'function':self.user_list,
@@ -101,7 +110,7 @@ class Bot(GroupMixin, discord.Client):
 				'valid_variables':{},
 				'help_message':f'''
 				'''
-			}
+			},
 			'user_modify':{
 				'alias':['u_m', 'um', 'u=', 'user=', 'umod', 'usermod'],
 				'function':self.user_modify,
@@ -126,7 +135,13 @@ class Bot(GroupMixin, discord.Client):
 				'''
 			}
 		}
+
+		#These two loops parse through the self.Commands and sets the aliases up for the commands.
+		tempCommands = {}
 		for cmd in self.Commands:
+			tempCommands[cmd] = {}
+
+		for cmd in tempCommands:
 			if cmd == '_list':
 				continue
 
@@ -135,16 +150,29 @@ class Bot(GroupMixin, discord.Client):
 
 			for alias in self.Commands[cmd]['alias']:
 				if not alias in self.Commands['_list']:
-					self.Comands['_list'].append(alias)
+					self.Commands['_list'].append(alias)
 
-				if not self.Commmands[alias]:
+				if not alias in self.Commands:
 					self.Commands[alias] = cmd
 
 		self.Users = {
 
 		}
 
-	async def db_save(self, file):
+	def config_initialize(self, file):
+		if file.is_file():
+			try:
+				config_loaded = configparser.ConfigParser()
+				config_loaded.read(file)
+				return(config_loaded)
+			except:
+				print(f'Error:  Unable to read the config file. The sent file is {file}.')
+				return(False)
+		else:
+			print(f'Error:  Unable to load the config file. The sent file path is {file}.')
+			return(False)
+
+	def db_save(self, file):
 		try:
 			with open(file, 'wb') as file:
 				pickle.dump(self.data, file, pickle.HIGHEST_PROTOCOL)
@@ -191,7 +219,7 @@ class Bot(GroupMixin, discord.Client):
 			await self.send_message(author, f'ERROR:  You requested help for a command that does **NOT** exist! You sent {command}, check your spelling.')
 			return(False)
 		else:
-			await self.send_message(author, f'{self.Commands[cmd]['help_message']}')
+			await self.send_message(author, self.Commands[cmd]['help_message'])
 			return(True)
 
 		if command == 'user_modify':
@@ -208,7 +236,7 @@ class Bot(GroupMixin, discord.Client):
 
 		found = True
 		if not channel_ID in self.channels:
-			await self.refresh_channels()
+			await self.channels_refresh()
 			if not channel_ID in self.channels:
 				found = False
 				await bot.send_message(message.author, f'ERROR: Channel ID  [{channel_ID}]  was not found.')
@@ -221,14 +249,14 @@ class Bot(GroupMixin, discord.Client):
 				t = datetime.now()
 				self.recording[channel.id] = channel
 				self.data['Recording'][channel.id] = {
-					'uniqueID': f'{channel.id}...{t.strftime("%H:%M:%S")}...{t.strftime("%Y-%m-%d")}'
+					'uniqueID': f'{channel.id}...{t.strftime("%H:%M:%S")}...{t.strftime("%Y-%m-%d")}',
 					'timeStart': t.strftime('%H:%M:%S'),
 					'timeEnd': 'Null:Null:Null',
 					'dateStart': t.strftime('%Y-%m-%d'),
 					'dateEnd': 'Null-Null-Null',
 					'Duration': 0,
 					'Comments': {},
-					'Members:' {}
+					'Members:': {}
 				}
 
 				await self.db_save()
@@ -246,7 +274,7 @@ class Bot(GroupMixin, discord.Client):
 
 		found = True
 		if not channel_ID in self.channels:
-			await self.refresh_channels()
+			await self.channels_refresh()
 			if not channel_ID in self.channels:
 				found = False
 				await bot.send_message(author, f'ERROR: Channel ID  [{channel_ID}]  was not found.')
@@ -309,6 +337,18 @@ class Bot(GroupMixin, discord.Client):
 			del self.recording[channel.id]
 			del self.data['Recording'][channel.id]
 			await self.db_save()
+
+	async def recording_list(self):
+		print('Create the recording_list function')
+
+	async def recording_get(self):
+		print('Create the recording_get function')
+
+	async def user_add(self):
+		print('Create the user_add function')
+
+	async def user_remove(self):
+		print('Create the user_remove function')
 
 	async def user_modify(self, target, message_split):
 		author = message.author
