@@ -19,11 +19,8 @@ from discord.ext.commands.formatter import HelpFormatter
 
 class RaidAttendanceBot(GroupMixin, discord.Client):
 	def __init__(self, directory='', path={}, command_prefix='ra.', formatter=None, description=None, pm_help=True, **options):
-		super().__init__(**options)
-		self.directory = directory
-		self.path = path
-
 		###DEFAULT BOT STUFF###
+		super().__init__(**options)
 		self.command_prefix = command_prefix
 		self.pm_help = pm_help
 		self.command_not_found = options.pop('command_not_found', 'No command called "{}" found.')
@@ -39,11 +36,31 @@ class RaidAttendanceBot(GroupMixin, discord.Client):
 		#self.command(**self.help_attrs)('help')
 		###DEFAULT BOT STUFF END###
 
+		
+		self.directory = directory
+		self.path = path
 
-		self.CONFIG_TOKEN = Bot.config_initialize(file=Bot.PATH_TOKEN)
-		self.TOKEN = self.CONFIG_TOKEN['TOKEN']['TOKEN']
+		self.configs = {
+			'general':self.config_initialize(file=self.path['config_general']),
+			'commands':self.config_initialize(file=self.path['config_commands'])
+		}
 
-		#self.Commands = self.config_initialize()
+		self.Token = self.configs['general']['SETUP']['Token']
+
+		'''
+		####I'm not sure I want to do this only for permission levels...... I don't expect it to have much public use sooooooo
+
+		#Parse self.configs['commands'] into something more user friendly.
+		self.Commands = {'_list':[]}
+		for section in self.configs['commands'].sections():
+			self.Commands[section] = {}
+			for key in self.configs['commands'][section]:
+				self.Commands[section][key] = self.configs['commands'][section][key]
+
+			#Setup Aliases
+			for alias in self.configs['commands'][section]['alias']:
+				self.Commands[alias] = self.Commands[section]
+		'''
 
 		self.Commands = {
 			'_list':[],
@@ -136,28 +153,56 @@ class RaidAttendanceBot(GroupMixin, discord.Client):
 			}
 		}
 
-		#These two loops parse through the self.Commands and sets the aliases up for the commands.
-		tempCommands = {}
+		#Setup aliases.
+		tCommands = []
 		for cmd in self.Commands:
-			tempCommands[cmd] = {}
-
-		for cmd in tempCommands:
 			if cmd == '_list':
 				continue
 
-			if not cmd in self.Commands['_list']:
-				self.Commands['_list'].append(cmd)
+			self.Commands['_list'].append(cmd)
+			tCommands.append(cmd)
 
+		for cmd in tCommands:
 			for alias in self.Commands[cmd]['alias']:
-				if not alias in self.Commands['_list']:
-					self.Commands['_list'].append(alias)
+				self.Commands[alias] = self.Commands[cmd]
 
-				if not alias in self.Commands:
-					self.Commands[alias] = cmd
+		self.Users = {}
 
-		self.Users = {
 
-		}
+
+	##EVENTS##
+	async def on_ready(self):
+		await self.channels_refresh()
+		for recording in self.Data['Recording']:
+			if not recording in self.Channels:
+				continue
+			else:
+				self.Recordings.append(recording)
+
+		self.loop.create_task(self.loop_recording())
+
+	async def on_message(self, message):
+		if message.author != self.user and message.content.startswith('ra.'):
+			for command in self.Commands['_list']:
+				command_sent = f'ra.{command}'
+				if not message.content.startswith(command_sent):
+					continue
+				else:
+					message.content = message.content.replace(command_sent, "", 1)
+					self.Commands[command]['function'](message)
+					break
+
+		try:
+			await bot.process_commands(message)
+		except AttributeError:
+			pass
+
+
+	##FUNCTIONS##
+	async def loop_recording(self):
+		while true:
+			print('hello')
+			await asyncio.sleep(1)
 
 	def config_initialize(self, file):
 		if file.is_file():

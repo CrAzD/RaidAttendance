@@ -27,20 +27,15 @@ PATH = {
 	'logs':Path(DIRECTORY+'\\Logs'),
 	'modules':Path(DIRECTORY+'\\Modules'),
 	'other':Path(DIRECTORY+'\\Other'),
-	'token':Path(DIRECTORY+'\\Config\\TOKEN.TOKEN')
+	'config_commands':Path(DIRECTORY+'\\Config\\Commands.ini'),
+	'config_general':Path(DIRECTORY+'\\Config\\General.ini')
 }
 Bot = RaidAttendanceBot(directroy=DIRECTORY, path=PATH)
-Bot.run(Bot.TOKEN)
+Bot.run(Bot.Token)
 
 
 
 '''
-#GLOBALS
-DIRECTORY = os.path.dirname(os.path.abspath(__file__))
-PICKLE_PATH = DIRECTORY+'\\BotRaidAtendanceInfo.pickle'
-PICKLE_FILE = Path(PICKLE_PATH)
-
-
 #DATABASE
 	#Creation
 	#Loading
@@ -91,43 +86,4 @@ else:
 		data = pickle.load(file)
 
 Bot.PICKLE_FILE = PICKLE_FILE
-
-
-
-#EVENTS
-@Bot.event
-async def on_ready():
-	await Bot.channels_refresh()
-
-	for recording in data['Recordings']:
-		if not recording in Bot.channels:
-			continue
-
-		Bot.recordings[recording] = channel
-
-	Bot.loop.create_task(Bot.loop_recording())
-
-
-@Bot.event
-async def on_message(message):
-	if message.author != Bot.user and message.content.startswith('ra.'):
-
-		for cmd in COMMAND_LIST:
-			if not message.content.startswith(f'ra.{cmd}'):
-				continue
-
-			command = cmd
-			message.content = message.content.replace(command, "", 1)
-
-			FUNCTIONS[command](message)
-			break
-
-	try:
-		await bot.process_commands(message)
-	except AttributeError:
-		pass
-
-
-
-Bot.run('TOKEN-GOES-HERE')
 '''
