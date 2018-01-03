@@ -8,16 +8,12 @@ import pickle
 import os
 import sys
 
-from discord.ext.commands.core import GroupMixin, Command, command
-from discord.ext.commands.view import StringView
-from discord.ext.commands.context import Context
-from discord.ext.commands.errors import CommandNotFound, CommandError
-from discord.ext.commands.formatter import HelpFormatter
+from discord.ext import commands
 
 #from openpyxl import WorkBook
 
 
-class RaidAttendanceBot(GroupMixin, discord.Client):
+class RaidAttendanceBot(commands.GroupMixin, discord.Client):
 	def __init__(self, directory='', path={}, command_prefix='ra.', formatter=None, description=None, pm_help=True, **options):
 		###DEFAULT BOT STUFF###
 		super().__init__(**options)
@@ -31,7 +27,7 @@ class RaidAttendanceBot(GroupMixin, discord.Client):
 		if not 'name' in self.help_attrs:
 			self.help_attrs['name'] = 'help'
 		if not formatter is None:
-			if not isinstance(formatter, HelpFormatter):
+			if not isinstance(formatter, commands.HelpFormatter):
 				raise discord.ClientException('Formatter')
 		#self.command(**self.help_attrs)('help')
 		###DEFAULT BOT STUFF END###
@@ -64,16 +60,8 @@ class RaidAttendanceBot(GroupMixin, discord.Client):
 
 		self.Commands = {
 			'_list':[],
-			'help_manual':{
-				'alias':['help'],
-				'function':self.help_manual,
-				'permission_level':-1,
-				'valid_variables':{},
-				'help_message':f'''
-				'''
-			},
 			'recording_start':{
-				'alias':['rec_start', 'r_s', 'recstart', 'rs'],
+				'aliases':['rec_start', 'r_s', 'recstart', 'rs'],
 				'function':self.recording_start,
 				'permission_level':3,
 				'valid_variables':{},
@@ -81,7 +69,7 @@ class RaidAttendanceBot(GroupMixin, discord.Client):
 				'''
 			},
 			'recording_end':{
-				'alias':['rec_end', 'r_e', 'recend', 're'],
+				'aliases':['rec_end', 'r_e', 'recend', 're'],
 				'function':self.recording_end,
 				'permission_level':3,
 				'valid_variables':{},
@@ -89,7 +77,7 @@ class RaidAttendanceBot(GroupMixin, discord.Client):
 				'''
 			},
 			'recording_list':{
-				'alias':['rec_list', 'r_l', 'reclist', 'rl'],
+				'aliases':['rec_list', 'r_l', 'reclist', 'rl'],
 				'function':self.recording_list,
 				'permission_level':3,
 				'valid_variables':{},
@@ -97,7 +85,7 @@ class RaidAttendanceBot(GroupMixin, discord.Client):
 				'''
 			},
 			'recording_get':{
-				'alias':['rec_get', 'r_g', 'recget', 'rg'],
+				'aliases':['rec_get', 'r_g', 'recget', 'rg'],
 				'function':self.recording_get,
 				'permission_level':-1,
 				'valid_variables':{},
@@ -105,7 +93,7 @@ class RaidAttendanceBot(GroupMixin, discord.Client):
 				'''
 			},
 			'user_add':{
-				'alias':['u_a', 'ua', 'u+', 'user+'],
+				'aliases':['u_a', 'ua', 'u+', 'user+'],
 				'function':self.user_add,
 				'permission_level':5,
 				'valid_variables':{},
@@ -113,7 +101,7 @@ class RaidAttendanceBot(GroupMixin, discord.Client):
 				'''
 			},
 			'user_remove':{
-				'alias':['u_r', 'ur', 'u-', 'user-'],
+				'aliases':['u_r', 'ur', 'u-', 'user-'],
 				'function':self.user_remove,
 				'permission_level':5,
 				'valid_variables':{},
@@ -121,7 +109,7 @@ class RaidAttendanceBot(GroupMixin, discord.Client):
 				'''
 			},
 			'user_list':{
-				'alias':['u_l', 'ul', 'u|', 'user|'],
+				'aliases':['u_l', 'ul', 'u|', 'user|'],
 				'function':self.user_list,
 				'permission_level':-1,
 				'valid_variables':{},
@@ -129,7 +117,7 @@ class RaidAttendanceBot(GroupMixin, discord.Client):
 				'''
 			},
 			'user_modify':{
-				'alias':['u_m', 'um', 'u=', 'user=', 'umod', 'usermod'],
+				'aliases':['u_m', 'um', 'u=', 'user=', 'umod', 'usermod'],
 				'function':self.user_modify,
 				'permission_level':5,
 				'valid_variables':{
@@ -162,9 +150,9 @@ class RaidAttendanceBot(GroupMixin, discord.Client):
 			self.Commands['_list'].append(cmd)
 			tCommands.append(cmd)
 
-		for cmd in tCommands:
-			for alias in self.Commands[cmd]['alias']:
-				self.Commands[alias] = self.Commands[cmd]
+		#for cmd in tCommands:
+		#	for alias in self.Commands[cmd]['alias']:
+		#		self.Commands[alias] = self.Commands[cmd]
 
 		self.Users = {}
 
@@ -181,28 +169,44 @@ class RaidAttendanceBot(GroupMixin, discord.Client):
 
 		self.loop.create_task(self.loop_recording())
 
-	async def on_message(self, message):
-		if message.author != self.user and message.content.startswith('ra.'):
-			for command in self.Commands['_list']:
-				command_sent = f'ra.{command}'
-				if not message.content.startswith(command_sent):
-					continue
-				else:
-					message.content = message.content.replace(command_sent, "", 1)
-					self.Commands[command]['function'](message)
-					break
-
-		try:
-			await bot.process_commands(message)
-		except AttributeError:
-			pass
-
 
 	##FUNCTIONS##
 	async def loop_recording(self):
 		while true:
 			print('hello')
 			await asyncio.sleep(1)
+
+	async def channels_refresh(self):
+		self.channels = {}
+		for channel in self.get_all_channels():
+			if channel.id in self.channels:
+				continue
+
+			self.channels[channel.id] = channel
+
+	async def str_to_bool(self, value):
+		if str(value).lower() in ['true', 't', '1', 'yes', 'y', 'on', 'enable']:
+			return(True)
+		else:
+			return(False)
+
+	async def is_authorized(self, author, command='None', function_from='unknown'):
+		cmd = command.lower()
+
+		if not command or command == 'None':
+			await self.send_message(author, f'ERROR:  No command was passed to is_authorized, sending function was {function_from}.')
+			return(False)
+		elif not cmd in self.Commands['_list']:
+			await self.send_message(author, f'ERROR:  That command does **NOT** exist! You sent {command}, check your spelling.')
+			return(False)
+		elif not author.id in self.Users:
+			await self.send_message(author, 'ERROR:  You have **NOT** been setup with this bot, speak with your system administrator.')
+			return(False)
+		elif not self.Users[author.id]['permission_level'] >= self.Commands[cmd]['permission_level'] and self.Commands[cmd]['permission_level'] != -1:
+			await self.send_message(author, f'ERROR:  You are **NOT** authorized to use the ra.{cmd.upper()[:1]}{cmd[1:]} command.')
+			return(False)
+		else:
+			return(True)
 
 	def config_initialize(self, file):
 		if file.is_file():
@@ -224,54 +228,20 @@ class RaidAttendanceBot(GroupMixin, discord.Client):
 			return(True)
 		except:
 			return(False)
-
-	async def channels_refresh(self):
-		self.channels = {}
-		for channel in self.get_all_channels():
-			if channel.id in self.channels:
-				continue
-
-			self.channels[channel.id] = channel
 			self.channels[channel.name] = channel
 
-	async def str_to_bool(self, value):
-		if str(value).lower() in ['true', 't', '1', 'yes', 'y', 'on', 'enable']:
-			return(True)
-		else:
-			return(False)
 
-	async def is_authorized(self, author, command='None', function_from='unknown'):
-		cmd = command.lower()
 
-		if not command or command == 'None':
-			await self.send_message(author, f'ERROR:  No command was passed to is_authorized, sending function was {function_from}.')
-			return(False)
-		elif not cmd in self.Commands['_list']:
-			await self.send_message(author, f'ERROR:  That command does **NOT** exist! You sent {command}, check your spelling.')
-			return(False)
-		elif not author.id in self.Users:
-			await self.send_message(author, 'ERROR:  You do **NOT** have any access to this BOT.')
-			return(False)
-		elif not self.Users[author.id]['permission_level'] >= self.Commands[cmd]['permission_level'] and self.Commands[cmd]['permission_level'] != -1:
-			await self.send_message(author, f'ERROR:  You do **NOT** have access to the ra.{cmd.upper()[:1]}{cmd[1:]} command.')
-			return(False)
-		else:
-			return(True)
-
-	async def help_manual(self, author, command):
-		cmd = command.lower()
-		if not cmd in self.Commands:
-			await self.send_message(author, f'ERROR:  You requested help for a command that does **NOT** exist! You sent {command}, check your spelling.')
-			return(False)
-		else:
-			await self.send_message(author, self.Commands[cmd]['help_message'])
-			return(True)
-
-		if command == 'user_modify':
-			await self.send_message(author, )
-		return(True)
-
+	##COMMANDS##
+	@commands.command(name='recording_start', 
+		aliases=['rec_start', 'r_s', 'recstart', 'rs'],
+		rest_is_raw=True)
 	async def recording_start(self, message):
+		"""
+		"""
+		if not self.is_authorized(message.author, 'recording_start'):
+			return
+
 		message_split = message.content.strip('ra.recording_start').split(" ")
 		channel_ID = ''
 		if '=' in message_split[0]:

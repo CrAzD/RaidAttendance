@@ -8,13 +8,6 @@ import pickle
 import os
 import sys
 
-from discord.ext.commands.core import GroupMixin, Command, command
-from discord.ext.commands.context import Context
-from discord.ext.commands.errors import CommandNotFound, CommandError
-from discord.ext.commands.formatter import HelpFormatter
-from discord.ext import commands
-
-from datetime import datetime
 from pathlib import Path
 
 from Modules.Bot import RaidAttendanceBot as RaidAttendanceBot
@@ -31,11 +24,18 @@ PATH = {
 	'config_general':Path(DIRECTORY+'\\Config\\General.ini')
 }
 Bot = RaidAttendanceBot(directroy=DIRECTORY, path=PATH)
-Bot.run(Bot.Token)
-
+try:
+	Bot.run(Bot.Token)
+except discord.errors.LoginFailure:
+	print('Bad token, why u do dis?')
+	print('Add a manual input request here')
 
 
 '''
+https://github.com/Rapptz/discord.py/blob/rewrite/discord/ext/commands/core.py
+https://github.com/Rapptz/RoboDanny/blob/rewrite/cogs/mod.py
+https://github.com/Rapptz/RoboDanny/blob/rewrite/cogs/utils/checks.py
+
 #DATABASE
 	#Creation
 	#Loading
