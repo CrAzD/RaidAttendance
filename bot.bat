@@ -1,1 +1,1 @@
-python %~dp0Core.py
+python %~dp0core.py
