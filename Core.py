@@ -1,13 +1,5 @@
 import discord
 
-import asyncio
-import configparser
-import inspect
-import math
-import pickle
-import os
-import sys
-
 from pathlib import Path
 
 from modules.bot import AttendanceBot, BotMain
